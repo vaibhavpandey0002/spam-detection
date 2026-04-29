@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import pickle
 import os
@@ -157,3 +159,8 @@ def predict(request: PredictionRequest):
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Spam Detection API"}
+
+# Serve frontend static files (must be last)
+FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
