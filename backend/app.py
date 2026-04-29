@@ -15,6 +15,7 @@ nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
 nltk.download('stopwords', quiet=True)
 
+# Create the main app
 app = FastAPI(title="Spam Detection API")
 
 app.add_middleware(
@@ -72,7 +73,7 @@ SPAM_INDICATORS = {
     'bitcoin', 'wallet', 'alert', 'security', 'compromised', 'transfer'
 }
 
-@app.post("/api/predict", response_model=PredictionResponse)
+@app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     if model is None or vectorizer is None:
         raise HTTPException(status_code=500, detail="Model is not loaded.")
@@ -124,10 +125,6 @@ def predict(request: PredictionRequest):
 
     return PredictionResponse(prediction=label, confidence=confidence, keywords=found_keywords, reasons=reasons)
 
-@app.get("/api")
-def read_root():
-    return {"message": "Welcome to the Spam Detection API"}
-
-# Mount frontend LAST - serves all non-API routes
+# Mount frontend AFTER all API routes
 if os.path.exists(FRONTEND_DIR):
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

@@ -1,3 +1,3 @@
-// API Configuration - Backend on Render
+// API Configuration - Single deployment on Render
 window.ENV = window.ENV || {};
-window.ENV.API_URL = 'https://spam-detection-r18e.onrender.com';
+window.ENV.API_URL = '';
