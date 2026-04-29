@@ -4,11 +4,5 @@
   "installCommand": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "env": {
-    "VITE_API_URL": {
-      "type": "plain",
-      "value": ""
-    }
-  }
+  ]
 }
