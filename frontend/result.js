@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchPrediction(text) {
         try {
             // Call FastAPI Backend
-            // API URL - update this after deploying the backend to Render
+            // API URL - use relative path for single deployment
             const API_URL = (typeof window.ENV !== 'undefined' && window.ENV.API_URL) || '';
             const response = await fetch(`${API_URL}/api/predict`, {
                 method: 'POST',
