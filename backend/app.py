@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import pickle
 import os
@@ -27,6 +29,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "..", "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "model.pkl")
 VECTORIZER_PATH = os.path.join(MODEL_DIR, "vectorizer.pkl")
+FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 
 model = None
 vectorizer = None
@@ -69,7 +72,7 @@ SPAM_INDICATORS = {
     'bitcoin', 'wallet', 'alert', 'security', 'compromised', 'transfer'
 }
 
-@app.post("/predict", response_model=PredictionResponse)
+@app.post("/api/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     if model is None or vectorizer is None:
         raise HTTPException(status_code=500, detail="Model is not loaded.")
@@ -121,6 +124,10 @@ def predict(request: PredictionRequest):
 
     return PredictionResponse(prediction=label, confidence=confidence, keywords=found_keywords, reasons=reasons)
 
-@app.get("/")
+@app.get("/api")
 def read_root():
     return {"message": "Welcome to the Spam Detection API"}
+
+# Mount frontend LAST - serves all non-API routes
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
