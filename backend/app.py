@@ -1,7 +1,5 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import pickle
 import os
@@ -11,14 +9,12 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import re
 
-# Ensure NLTK resources are available
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
 nltk.download('stopwords', quiet=True)
 
 app = FastAPI(title="Spam Detection API")
 
-# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,14 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "..", "model")
 MODEL_PATH = os.path.join(MODEL_DIR, "model.pkl")
 VECTORIZER_PATH = os.path.join(MODEL_DIR, "vectorizer.pkl")
-FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 
-# Global variables
 model = None
 vectorizer = None
 
@@ -76,7 +69,7 @@ SPAM_INDICATORS = {
     'bitcoin', 'wallet', 'alert', 'security', 'compromised', 'transfer'
 }
 
-@app.post("/api/predict", response_model=PredictionResponse)
+@app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     if model is None or vectorizer is None:
         raise HTTPException(status_code=500, detail="Model is not loaded.")
@@ -128,17 +121,6 @@ def predict(request: PredictionRequest):
 
     return PredictionResponse(prediction=label, confidence=confidence, keywords=found_keywords, reasons=reasons)
 
-@app.get("/api")
+@app.get("/")
 def read_root():
     return {"message": "Welcome to the Spam Detection API"}
-
-# Serve frontend - catch all non-API routes
-@app.get("/{full_path:path}")
-async def serve_frontend(request: Request, full_path: str):
-    if full_path.startswith("api/"):
-        return JSONResponse({"detail": "Not Found"}, status_code=404)
-    
-    file_path = os.path.join(FRONTEND_DIR, full_path)
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return FileResponse(file_path)
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
