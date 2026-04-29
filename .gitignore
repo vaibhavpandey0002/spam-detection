@@ -1,10 +1,12 @@
 __pycache__/
 *.pyc
 *.pyo
-*.pkl
 .env
 venv/
 .venv/
 *.egg-info/
 dist/
 build/
+
+# Allow model artifacts
+!model/*.pkl
