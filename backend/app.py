@@ -18,6 +18,13 @@ nltk.download('stopwords', quiet=True)
 
 app = FastAPI(title="Spam Detection API")
 
+# Create a sub-application for API routes
+from fastapi import APIRouter
+api_router = APIRouter(prefix="/api")
+
+# Include the API router
+app.include_router(api_router)
+
 # Enable CORS for frontend connection
 app.add_middleware(
     CORSMiddleware,
@@ -88,7 +95,7 @@ SPAM_INDICATORS = {
     'bitcoin', 'wallet', 'alert', 'security', 'compromised', 'transfer'
 }
 
-@app.post("/predict", response_model=PredictionResponse)
+@api_router.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     if model is None or vectorizer is None:
         raise HTTPException(status_code=500, detail="Model is not loaded. Please train the model first.")
@@ -156,11 +163,13 @@ def predict(request: PredictionRequest):
     
     return PredictionResponse(prediction=label, confidence=confidence, keywords=found_keywords, reasons=reasons)
 
-@app.get("/")
+@api_router.get("/")
 def read_root():
     return {"message": "Welcome to the Spam Detection API"}
 
-# Serve frontend static files (must be last)
+# Serve frontend static files (must be after API routes)
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 if os.path.exists(FRONTEND_DIR):
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+else:
+    print(f"Warning: Frontend directory not found at {FRONTEND_DIR}")
