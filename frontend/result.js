@@ -57,7 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchPrediction(text) {
         try {
             // Call FastAPI Backend
-            const response = await fetch('http://localhost:8000/predict', {
+            // API URL - update this after deploying the backend to Render
+            const API_URL = (typeof window.ENV !== 'undefined' && window.ENV.API_URL) || 'http://localhost:8000';
+            const response = await fetch(`${API_URL}/predict`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
