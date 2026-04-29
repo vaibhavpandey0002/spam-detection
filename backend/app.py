@@ -170,6 +170,18 @@ def read_root():
 # Serve frontend static files (must be after API routes)
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
+    
+    # Serve static assets (js, css, images, etc.)
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR), name="assets")
+    
+    # Catch-all route to serve index.html for all non-API routes (SPA support)
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        file_path = os.path.join(FRONTEND_DIR, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 else:
     print(f"Warning: Frontend directory not found at {FRONTEND_DIR}")
