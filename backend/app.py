@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import pickle
 import os
@@ -15,10 +14,10 @@ nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
 nltk.download('stopwords', quiet=True)
 
-# Create the main app
-app = FastAPI(title="Spam Detection API")
+# Create the FastAPI app for API
+api_app = FastAPI(title="Spam Detection API")
 
-app.add_middleware(
+api_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -43,7 +42,7 @@ def preprocess_text(text: str) -> str:
     tokens = [word for word in tokens if word not in stop_words]
     return " ".join(tokens)
 
-@app.on_event("startup")
+@api_app.on_event("startup")
 def load_artifacts():
     global model, vectorizer
     if not os.path.exists(MODEL_PATH) or not os.path.exists(VECTORIZER_PATH):
@@ -73,7 +72,7 @@ SPAM_INDICATORS = {
     'bitcoin', 'wallet', 'alert', 'security', 'compromised', 'transfer'
 }
 
-@app.post("/predict", response_model=PredictionResponse)
+@api_app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     if model is None or vectorizer is None:
         raise HTTPException(status_code=500, detail="Model is not loaded.")
@@ -125,6 +124,39 @@ def predict(request: PredictionRequest):
 
     return PredictionResponse(prediction=label, confidence=confidence, keywords=found_keywords, reasons=reasons)
 
-# Mount frontend AFTER all API routes
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+# Create the main app that combines API + SPA
+from starlette.routing import Mount, Route
+from starlette.responses import FileResponse as StarletteFileResponse
+from starlette.staticfiles import StaticFiles as StarletteStaticFiles
+from starlette.applications import Starlette
+
+# SPA handler
+async def serve_spa(scope, receive, send):
+    path = scope.get("path", "/")
+    file_path = os.path.join(FRONTEND_DIR, path.lstrip("/"))
+    
+    # Try to serve the file directly
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        response = StarletteFileResponse(file_path)
+        await response(scope, receive, send)
+        return
+    
+    # SPA fallback
+    index_path = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(index_path):
+        response = StarletteFileResponse(index_path)
+        await response(scope, receive, send)
+        return
+    
+    # 404
+    from starlette.responses import JSONResponse as StarletteJSONResponse
+    response = StarletteJSONResponse({"detail": "Not Found"}, status_code=404)
+    await response(scope, receive, send)
+
+# Create the combined app
+routes = [
+    Mount("/api", app=api_app),
+    Route("/{path:path}", endpoint=serve_spa),
+]
+
+app = Starlette(debug=True, routes=routes)
