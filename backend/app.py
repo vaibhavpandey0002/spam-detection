@@ -42,7 +42,6 @@ def preprocess_text(text: str) -> str:
     tokens = [word for word in tokens if word not in stop_words]
     return " ".join(tokens)
 
-@api_app.on_event("startup")
 def load_artifacts():
     global model, vectorizer
     if not os.path.exists(MODEL_PATH) or not os.path.exists(VECTORIZER_PATH):
@@ -53,6 +52,9 @@ def load_artifacts():
     with open(VECTORIZER_PATH, "rb") as f:
         vectorizer = pickle.load(f)
     print("Model and Vectorizer loaded successfully.")
+
+# Load immediately since sub-apps don't inherit lifespan events
+load_artifacts()
 
 class PredictionRequest(BaseModel):
     message: str
@@ -127,31 +129,28 @@ def predict(request: PredictionRequest):
 # Create the main app that combines API + SPA
 from starlette.routing import Mount, Route
 from starlette.responses import FileResponse as StarletteFileResponse
-from starlette.staticfiles import StaticFiles as StarletteStaticFiles
 from starlette.applications import Starlette
 
 # SPA handler
-async def serve_spa(scope, receive, send):
-    path = scope.get("path", "/")
-    file_path = os.path.join(FRONTEND_DIR, path.lstrip("/"))
+async def serve_spa(request):
+    path = request.path_params.get("path", "")
+    if not path:
+        path = "index.html"
+        
+    file_path = os.path.join(FRONTEND_DIR, path)
     
     # Try to serve the file directly
     if os.path.exists(file_path) and os.path.isfile(file_path):
-        response = StarletteFileResponse(file_path)
-        await response(scope, receive, send)
-        return
+        return StarletteFileResponse(file_path)
     
     # SPA fallback
     index_path = os.path.join(FRONTEND_DIR, "index.html")
     if os.path.exists(index_path):
-        response = StarletteFileResponse(index_path)
-        await response(scope, receive, send)
-        return
+        return StarletteFileResponse(index_path)
     
     # 404
     from starlette.responses import JSONResponse as StarletteJSONResponse
-    response = StarletteJSONResponse({"detail": "Not Found"}, status_code=404)
-    await response(scope, receive, send)
+    return StarletteJSONResponse({"detail": "Not Found"}, status_code=404)
 
 # Create the combined app
 routes = [
