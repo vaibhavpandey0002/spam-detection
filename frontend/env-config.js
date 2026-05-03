@@ -1,3 +1,3 @@
-// API Configuration - Points to Render backend
+// API Configuration
 window.ENV = window.ENV || {};
-window.ENV.API_URL = 'https://spam-detection-r18e.onrender.com';
+window.ENV.API_URL = 'https://passengers-dress-zinc-making.trycloudflare.com';
